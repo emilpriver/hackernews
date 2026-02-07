@@ -12,7 +12,12 @@
 		"binding": "ASSETS",
 		"directory": ".svelte-kit/cloudflare"
 	},
-	"custom_domains": ["hn.priver.dev"],
+"routes": [
+    {
+      "pattern": "shop.example.com",
+      "custom_domain": true
+    }
+  ],
 	"observability": {
 		"enabled": true
 	}

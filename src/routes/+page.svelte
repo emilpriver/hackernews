@@ -213,7 +213,7 @@
 								? 'border-orange-200 bg-orange-50 text-orange-700'
 								: 'border-stone-200 bg-white text-slate-600 hover:border-orange-200'
 						}`}
-						on:click={() => {
+						onclick={() => {
 							activeTab = 'trending';
 							selectedId = null;
 						}}
@@ -228,7 +228,7 @@
 								? 'border-orange-200 bg-orange-50 text-orange-700'
 								: 'border-stone-200 bg-white text-slate-600 hover:border-orange-200'
 						}`}
-						on:click={() => {
+						onclick={() => {
 							activeTab = 'new';
 							selectedId = null;
 						}}
@@ -245,7 +245,7 @@
 								? 'bg-white text-slate-900 shadow-sm'
 								: 'text-slate-500 hover:text-slate-700'
 						}`}
-						on:click={() => {
+						onclick={() => {
 							openMode = 'window';
 						}}
 					>
@@ -258,7 +258,7 @@
 								? 'bg-white text-slate-900 shadow-sm'
 								: 'text-slate-500 hover:text-slate-700'
 						}`}
-						on:click={() => {
+						onclick={() => {
 							openMode = 'tab';
 						}}
 					>
@@ -273,7 +273,7 @@
 				<button
 					type="button"
 					class="rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm"
-					on:click={() => {
+					onclick={() => {
 						sidebarOpen = !sidebarOpen;
 					}}
 				>
@@ -285,7 +285,8 @@
 				<button
 					type="button"
 					class="fixed inset-0 z-10 bg-black/30 lg:hidden"
-					on:click={() => {
+					aria-label="Close post list"
+					onclick={() => {
 						sidebarOpen = false;
 					}}
 				></button>
@@ -304,7 +305,7 @@
 						type="button"
 						class="rounded-full border border-stone-200 px-3 py-1 text-xs text-slate-500 transition hover:border-orange-200 hover:text-orange-700 disabled:cursor-not-allowed disabled:opacity-60"
 						disabled={refreshPending}
-						on:click={refreshStories}
+						onclick={refreshStories}
 					>
 						{refreshPending ? 'Refreshing…' : 'Refresh'}
 					</button>
@@ -317,7 +318,7 @@
 								class={`group flex w-full flex-col gap-2 px-5 py-4 text-left transition hover:bg-orange-50/60 ${
 									story.id === selectedId ? 'bg-orange-50/80' : 'bg-white'
 								}`}
-								on:click={() => handleStoryClick(story)}
+								onclick={() => handleStoryClick(story)}
 							>
 								<div class="flex items-start justify-between gap-3">
 									<span
@@ -385,7 +386,7 @@
 									iframeLoading ? 'opacity-0' : 'opacity-100'
 								}`}
 								src={getStoryUrl(selectedStory)}
-								on:load={handleIframeLoad}
+								onload={handleIframeLoad}
 							></iframe>
 						{/key}
 					</div>
