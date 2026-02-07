@@ -14,6 +14,8 @@
 	let openMode = $state<'window' | 'tab'>('window');
 	let iframeLoading = $state(true);
 	let iframeStoryId = $state<number | null>(null);
+	let seenIds = $state<Set<number>>(new Set());
+	let sidebarOpen = $state(false);
 	let comments = $state<
 		{ id: number; by: string | null; time: number | null; text: string | null }[]
 	>([]);
@@ -59,11 +61,29 @@
 		if (storedMode === 'window' || storedMode === 'tab') {
 			openMode = storedMode;
 		}
+
+		const storedSeen = browser ? localStorage.getItem('hn-seen-ids') : null;
+		if (storedSeen) {
+			try {
+				const parsed = JSON.parse(storedSeen);
+				if (Array.isArray(parsed)) {
+					seenIds = new Set(parsed.filter((id) => Number.isInteger(id)));
+				}
+			} catch {
+				seenIds = new Set();
+			}
+		}
 	});
 
 	$effect(() => {
 		if (browser) {
 			localStorage.setItem('hn-open-mode', openMode);
+		}
+	});
+
+	$effect(() => {
+		if (browser) {
+			localStorage.setItem('hn-seen-ids', JSON.stringify([...seenIds]));
 		}
 	});
 
@@ -137,13 +157,19 @@
 	};
 
 	const handleStoryClick = (story: { id: number; url: string | null }) => {
+		if (!seenIds.has(story.id)) {
+			seenIds = new Set([...seenIds, story.id]);
+		}
+
 		if (openMode === 'tab') {
 			const url = getStoryUrl(story);
 			window.open(url, '_blank', 'noopener,noreferrer');
+			sidebarOpen = false;
 			return;
 		}
 
 		selectedId = story.id;
+		sidebarOpen = false;
 	};
 
 	const refreshStories = async () => {
@@ -158,6 +184,8 @@
 	const handleIframeLoad = () => {
 		iframeLoading = false;
 	};
+
+	const isSeen = (id: number) => seenIds.has(id);
 </script>
 
 <div class="min-h-screen bg-stone-50 text-slate-900">
@@ -241,7 +269,32 @@
 		</header>
 
 		<section class="flex flex-1 flex-col gap-6 lg:flex-row">
-			<aside class="w-full shrink-0 rounded-3xl border border-stone-200 bg-white shadow-sm lg:w-96">
+			<div class="flex items-center justify-between lg:hidden">
+				<button
+					type="button"
+					class="rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm"
+					on:click={() => {
+						sidebarOpen = !sidebarOpen;
+					}}
+				>
+					{sidebarOpen ? 'Hide posts' : 'Show posts'}
+				</button>
+				<span class="text-xs text-slate-500">{stories.length} stories</span>
+			</div>
+			{#if sidebarOpen}
+				<button
+					type="button"
+					class="fixed inset-0 z-10 bg-black/30 lg:hidden"
+					on:click={() => {
+						sidebarOpen = false;
+					}}
+				></button>
+			{/if}
+			<aside
+				class={`fixed inset-y-0 left-0 z-20 w-11/12 max-w-sm transform rounded-r-3xl border border-stone-200 bg-white shadow-xl transition lg:static lg:z-auto lg:w-96 lg:translate-x-0 lg:rounded-3xl lg:shadow-sm ${
+					sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+				}`}
+			>
 				<div class="flex items-center justify-between border-b border-stone-100 px-5 py-4">
 					<div>
 						<p class="text-sm font-semibold text-slate-900 capitalize">{activeTab}</p>
@@ -268,11 +321,18 @@
 							>
 								<div class="flex items-start justify-between gap-3">
 									<span
-										class="cursor-pointer text-sm font-semibold text-slate-900 underline-offset-4 transition group-hover:text-orange-600 group-hover:underline"
+										class={`cursor-pointer text-sm font-semibold underline-offset-4 transition group-hover:text-orange-600 group-hover:underline ${
+											isSeen(story.id) ? 'text-slate-400' : 'text-slate-900'
+										}`}
 									>
 										{story.title}
 									</span>
-									<span class="text-xs font-semibold text-orange-500">{story.score ?? 0}</span>
+									<div class="flex flex-col items-end gap-1">
+										<span class="text-xs font-semibold text-orange-500">{story.score ?? 0}</span>
+										{#if isSeen(story.id)}
+											<span class="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Seen</span>
+										{/if}
+									</div>
 								</div>
 								<div class="flex flex-wrap items-center gap-2 text-xs text-slate-500">
 									<span>{formatDomain(story.url)}</span>
