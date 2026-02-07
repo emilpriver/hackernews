@@ -13,6 +13,7 @@
 	let refreshPending = $state(false);
 	let openMode = $state<'window' | 'tab'>('window');
 	let iframeLoading = $state(true);
+	let iframeStoryId = $state<number | null>(null);
 	let comments = $state<
 		{ id: number; by: string | null; time: number | null; text: string | null }[]
 	>([]);
@@ -43,10 +44,14 @@
 	$effect(() => {
 		if (!selectedStory || openMode === 'tab') {
 			iframeLoading = false;
+			iframeStoryId = selectedStory?.id ?? null;
 			return;
 		}
 
-		iframeLoading = true;
+		if (selectedStory.id !== iframeStoryId) {
+			iframeStoryId = selectedStory.id;
+			iframeLoading = true;
+		}
 	});
 
 	onMount(() => {
@@ -313,12 +318,16 @@
 								<div class="mt-4 flex-1 rounded-2xl bg-stone-200 animate-pulse"></div>
 							</div>
 						{/if}
-						<iframe
-							title={selectedStory.title}
-							class="h-full w-full border-none"
-							src={getStoryUrl(selectedStory)}
-							on:load={handleIframeLoad}
-						></iframe>
+						{#key selectedStory.id}
+							<iframe
+								title={selectedStory.title}
+								class={`h-full w-full border-none transition ${
+									iframeLoading ? 'opacity-0' : 'opacity-100'
+								}`}
+								src={getStoryUrl(selectedStory)}
+								on:load={handleIframeLoad}
+							></iframe>
+						{/key}
 					</div>
 					<div class="border-t border-stone-100 px-6 py-4">
 						<div class="flex items-center justify-between">
