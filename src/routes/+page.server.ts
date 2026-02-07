@@ -3,16 +3,30 @@ import type { PageServerLoad } from './$types';
 const STORY_LIMIT = 30;
 const CACHE_TTL_SECONDS = 300;
 const STALE_TTL_SECONDS = 600;
-const HN_BASE = 'https://hacker-news.firebaseio.com/v0';
+const ALGOLIA_BASE = 'https://hn.algolia.com/api/v1';
 
 type HnStory = {
-	id: number;
-	title: string;
-	by: string | null;
-	time: number | null;
-	score: number | null;
-	descendants: number | null;
-	url: string | null;
+        id: number;
+        title: string;
+        by: string | null;
+        time: number | null;
+        score: number | null;
+        descendants: number | null;
+        url: string | null;
+};
+
+type AlgoliaStory = {
+        objectID: string;
+        title?: string;
+        url?: string | null;
+        author?: string | null;
+        created_at_i?: number | null;
+        points?: number | null;
+        num_comments?: number | null;
+};
+
+type AlgoliaResponse = {
+        hits: AlgoliaStory[];
 };
 
 const getCacheKey = (request: Request, key: string) => {
@@ -35,35 +49,52 @@ const loadStories = async (request: Request, type: 'top' | 'new', cache?: Cache)
                 return (await cached.json()) as HnStory[];
         }
 
-	const ids = await fetchJson<number[]>(`${HN_BASE}/${type}stories.json`);
-	const limited = ids.slice(0, STORY_LIMIT);
-	const stories = await Promise.all(
-		limited.map(async (id) => {
-			const story = await fetchJson<Partial<HnStory>>(`${HN_BASE}/item/${id}.json`);
-			return {
-				id: story.id ?? id,
-				title: story.title ?? 'Untitled',
-				by: story.by ?? null,
-				time: story.time ?? null,
-				score: story.score ?? null,
-				descendants: story.descendants ?? null,
-				url: story.url ?? null
-			} satisfies HnStory;
-		})
-	);
+        if (type === 'top') {
+                const response = await fetchJson<AlgoliaResponse>(
+                        `${ALGOLIA_BASE}/search?tags=front_page&hitsPerPage=${STORY_LIMIT}`
+                );
+                const stories = response.hits.map((story) => ({
+                        id: Number(story.objectID),
+                        title: story.title ?? 'Untitled',
+                        by: story.author ?? null,
+                        time: story.created_at_i ?? null,
+                        score: story.points ?? null,
+                        descendants: story.num_comments ?? null,
+                        url: story.url ?? null
+                } satisfies HnStory));
 
-	const response = new Response(JSON.stringify(stories), {
-		headers: {
-			'content-type': 'application/json',
-			'cache-control': `public, max-age=${CACHE_TTL_SECONDS}, s-maxage=${CACHE_TTL_SECONDS}, stale-while-revalidate=${STALE_TTL_SECONDS}`
-		}
-	});
+                return await cacheStories(cache, cacheKey, stories);
+        }
+
+        const response = await fetchJson<AlgoliaResponse>(
+                `${ALGOLIA_BASE}/search_by_date?tags=story&hitsPerPage=${STORY_LIMIT}`
+        );
+        const stories = response.hits.map((story) => ({
+                id: Number(story.objectID),
+                title: story.title ?? 'Untitled',
+                by: story.author ?? null,
+                time: story.created_at_i ?? null,
+                score: story.points ?? null,
+                descendants: story.num_comments ?? null,
+                url: story.url ?? null
+        } satisfies HnStory));
+
+        return await cacheStories(cache, cacheKey, stories);
+};
+
+const cacheStories = async (cache: Cache | undefined, cacheKey: Request, stories: HnStory[]) => {
+        const response = new Response(JSON.stringify(stories), {
+                headers: {
+                        'content-type': 'application/json',
+                        'cache-control': `public, max-age=${CACHE_TTL_SECONDS}, s-maxage=${CACHE_TTL_SECONDS}, stale-while-revalidate=${STALE_TTL_SECONDS}`
+                }
+        });
 
         if (cache) {
                 await cache.put(cacheKey, response.clone());
         }
 
-	return stories;
+        return stories;
 };
 
 export const load: PageServerLoad = async ({ request, platform }) => {
