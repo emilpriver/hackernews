@@ -12,6 +12,7 @@
 		"binding": "ASSETS",
 		"directory": ".svelte-kit/cloudflare"
 	},
+	"routes": ["hn.priver.dev/*"],
 	"observability": {
 		"enabled": true
 	}
